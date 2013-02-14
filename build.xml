@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="project" default="compile">
+    <property name="json-simple.jar" location="lib/json-simple-1.1.1.jar"/>
+    
+    <target name="compile">
+        <javac srcdir="src"
+               destdir="classes"
+               classpath="${json-simple.jar}"
+        	     includeantruntime="false"
+        	     source="1.8"
+               debug="on"
+	      />
+    </target>
+</project>
