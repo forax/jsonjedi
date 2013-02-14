@@ -3,6 +3,12 @@ jsonjedi
 
 parsing JSON with JDK8 lambdas
 
+With this small library, I tried to see how to use lambdas when designing an API.
+It works in two steps, first with a `JSONSchemaBuilder` create a schema that describes
+which part of the JSON must be parsed into objects.
+Then on a `JSONSchema`, the method stream turn a schema and a Reader to a stream of objects.
+
+A small example:
 
     class User {
       String firstName;
