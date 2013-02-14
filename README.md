@@ -19,11 +19,6 @@ A small example:
     }
     class Address {
       String streetAddress;
-
-      @Override
-      public String toString() {
-        return "Address " + streetAddress;
-      }
     }
   
     class Phone {
