@@ -9,7 +9,7 @@ which part of the JSON must be parsed into objects.
 Then on a `JSONSchema`, the method stream turn a schema and a Reader to a stream of objects.
 
 A small example:
-
+`````java
     class User {
       String firstName;
       long age;
@@ -50,4 +50,4 @@ A small example:
         stream.filter(user -> user.firstName.length() > 3).forEach(System.out::println);
       }
     }
-
+`````
