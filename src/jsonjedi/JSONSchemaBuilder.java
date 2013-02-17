@@ -33,13 +33,46 @@ import org.json.simple.parser.ContentHandler;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+/**
+ * Build a structured description (schema) of a JSON.
+ *
+ * @param <T> type of the object that will be parsed.
+ * 
+ * @see #schema(Lookup, Class, Consumer)
+ */
 public class JSONSchemaBuilder<T> {
+  /**
+   * Consumer that takes an element of type T and an int value.
+   *
+   * @param <T> type of the element.
+   * 
+   * @see BiConsumer
+   * @see JSONSchemaBuilder#value(String, BiIntValueConsumer)
+   */
   public interface BiIntValueConsumer<T> {
     void accept(T element, int value);
   }
+  
+  /**
+   * Consumer that takes an element of type T and a long value.
+   *
+   * @param <T> type of the element.
+   * 
+   * @see BiConsumer
+   * @see JSONSchemaBuilder#value(String, BiLongValueConsumer)
+   */
   public interface BiLongValueConsumer<T> {
     void accept(T element, long value);
   }
+  
+  /**
+   * Consumer that takes an element of type T and a double value.
+   *
+   * @param <T> type of the element.
+   * 
+   * @see BiConsumer
+   * @see JSONSchemaBuilder#value(String, BiDoubleValueConsumer)
+   */
   public interface BiDoubleValueConsumer<T> {
     void accept(T element, double value);
   }
@@ -58,6 +91,7 @@ public class JSONSchemaBuilder<T> {
     this.streamConsumer = streamConsumer;
   }
 
+  // Context's state of the JSON handler
   enum ContextState {
     NONE,
     START_STREAM,
@@ -83,6 +117,7 @@ public class JSONSchemaBuilder<T> {
     }
   }
 
+  // this context is used to tell the JSON Handler to discard
   static final Context DISCARD_CONTEXT = new Context(null, ContextState.DISCARD);
 
   static class JSONSpliterator<T> implements Spliterator<T> {
@@ -378,11 +413,35 @@ public class JSONSchemaBuilder<T> {
   }
   
   
-
+  /**
+   * Create a description (a schema) of a JSON that will be used later
+   * to parse a JSON file/reader as a stream of object.
+   * 
+   * @param type the type of the top level objects in the JSON. 
+   * @param builderConsumer consumer that will be called with a builder to provide
+   *        a description of the values and entries of the top level object. 
+   * @return a schema of a JSON stream.
+   * 
+   * @see JSONSchema#stream(Reader)
+   * @see #schema(Lookup, Class, Consumer)
+   */
   public static <T> JSONSchema<T> schema(Class<T> type, Consumer<JSONSchemaBuilder<T>> builderConsumer) {
     return schema(MethodHandles.publicLookup(), type, builderConsumer);
   }
 
+  /**
+   * Create a description (a schema) of a JSON that will be used later
+   * to parse a JSON file/reader as a stream of object.
+   * 
+   * @param lookup the {@link Lookup} object used to find the field of class
+   *        describing the JSON schema.
+   * @param type the type of the top level objects in the JSON. 
+   * @param builderConsumer consumer that will be called with a builder to provide
+   *        a description of the values and entries of the top level object. 
+   * @return a schema of a JSON stream.
+   * 
+   * @see #schema(Lookup, Class, Consumer)
+   */
   public static <T> JSONSchema<T> schema(Lookup lookup, Class<T> type, Consumer<JSONSchemaBuilder<T>> builderConsumer) {
     JSONSchemaBuilder<T> builder = new JSONSchemaBuilder<>(lookup, type, null);
     builderConsumer.accept(builder);
@@ -395,6 +454,18 @@ public class JSONSchemaBuilder<T> {
     };
   }
 
+  /**
+   * Declares that the object described by the current builder has
+   * an entry named {@code key} of type {@code type}.
+   * 
+   * @param key name of the entry.
+   * @param type type of the objects of this entry.
+   * @param builderConsumer a consumer that will be called with a builder to provide
+   *        a description of the values and entries of the objects of this entry. 
+   * @param streamConsumer a consumer that will be called with a stream of the JSON
+   *        object corresponding to the entry during the parsing.
+   * @return the current schema builder.
+   */
   public <U> JSONSchemaBuilder<T> entry(String key, Class<U> type, Consumer<JSONSchemaBuilder<U>> builderConsumer, BiConsumer<? super T, Stream<U>> streamConsumer) {
     @SuppressWarnings("unchecked")
     JSONSchemaBuilder<U> builder = new JSONSchemaBuilder<>(lookup, type, (BiConsumer<Object, Stream<U>>)streamConsumer);
@@ -403,6 +474,16 @@ public class JSONSchemaBuilder<T> {
     return this;
   }
 
+  /**
+   * Declares that the object described by the current builder has
+   * an entry named {@code key} of type {@code type}.
+   * 
+   * @param key name of the entry.
+   * @param type type of the objects of this entry.
+   * @param streamConsumer a consumer that will be called with a stream of the JSON
+   *        object corresponding to the entry during the parsing.
+   * @return the current schema builder.
+   */
   public <U> JSONSchemaBuilder<T> entry(String key, Class<U> type, BiConsumer<? super T, Stream<U>> streamConsumer) {
     @SuppressWarnings("unchecked")
     JSONSchemaBuilder<U> builder = new JSONSchemaBuilder<>(lookup, type, (BiConsumer<Object, Stream<U>>)streamConsumer);
@@ -410,6 +491,16 @@ public class JSONSchemaBuilder<T> {
     return this;
   }
 
+  /**
+   * Declares that the object described by the current builder has
+   * a value named {@code key} of type {@code type}.
+   * 
+   * @param key name of the value.
+   * @param type type of the objects of this entry.
+   * @param streamConsumer a consumer that will be called with
+   *        the object described by the current builder and the parsed value.
+   * @return the current schema builder.
+   */
   public <U> JSONSchemaBuilder<T> value(String key, Class<U> type, BiConsumer<? super T, ? super U> valueConsumer) {
     if (type.isPrimitive()) {
       throw new IllegalArgumentException("primitive type are not valid here");
@@ -418,21 +509,53 @@ public class JSONSchemaBuilder<T> {
     return this;
   }
 
+  /**
+   * Declares that the object described by the current builder has
+   * a primitive value named {@code key} of type int.
+   * 
+   * @param key name of the value.
+   * @param streamConsumer a consumer that will be called with
+   *        the object described by the current builder and the parsed value.
+   * @return the current schema builder.
+   */
   public JSONSchemaBuilder<T> value(String key, BiIntValueConsumer<? super T> valueConsumer) {
     ruleMap.put(key, asSetter(BIINTVALUECONSUMER_ACCEPT, valueConsumer, Integer.class));
     return this;
   }
 
+  /**
+   * Declares that the object described by the current builder has
+   * a primitive value named {@code key} of type long.
+   * 
+   * @param key name of the value.
+   * @param streamConsumer a consumer that will be called with
+   *        the object described by the current builder and the parsed value.
+   * @return the current schema builder.
+   */
   public JSONSchemaBuilder<T> value(String key, BiLongValueConsumer<? super T> valueConsumer) {
     ruleMap.put(key, asSetter(BILONGVALUECONSUMER_ACCEPT, valueConsumer, Long.class));
     return this;
   }
 
+  /**
+   * Declares that the object described by the current builder has
+   * a primitive value named {@code key} of type long.
+   * 
+   * @param key name of the value.
+   * @param streamConsumer a consumer that will be called with
+   *        the object described by the current builder and the parsed value.
+   * @return the current schema builder.
+   */
   public JSONSchemaBuilder<T> value(String key, BiDoubleValueConsumer<? super T> valueConsumer) {
     ruleMap.put(key, asSetter(BIDOUBLEVALUECONSUMER_ACCEPT, valueConsumer, Double.class));
     return this;
   }
 
+  /**
+   * By default, the declared fields (not the inhereted ones) are automatically declared as value.
+   * This method allow to override this default behavior.
+   * @return
+   */
   public JSONSchemaBuilder<T> disallowImplicit() {
     allowImplicit = false;
     return this;
