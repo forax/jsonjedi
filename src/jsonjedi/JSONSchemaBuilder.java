@@ -130,12 +130,8 @@ public class JSONSchemaBuilder<T> {
     }
 
     @Override
-    public Spliterator<T> trySplit() {
-      return null;
-    }
-    @Override
-    public boolean hasExactSplits() {
-      return false;
+    public int characteristics() {
+      return DISTINCT|ORDERED|NONNULL;
     }
 
     @Override
@@ -170,7 +166,7 @@ public class JSONSchemaBuilder<T> {
   }
 
   Stream<T> createAStream(Handler handler, Context context) {
-    return Streams.stream(new JSONSpliterator<T>(handler, context), Streams.STREAM_IS_DISTINCT);
+    return Streams.stream(new JSONSpliterator<T>(handler, context));
   }
   
   void createAndSendStream(Handler handler, Object object, Context context) {
